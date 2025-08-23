@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generatore Fatture Mediche</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <!-- User Setup Modal -->
+    <div id="user-setup-modal" class="modal">
+        <div class="modal-overlay">
+            <div class="modal-content modal-content--large">
+                <h3>Configurazione Utente</h3>
+                <div id="setup-step-1" class="setup-step">
+                    <p>Inserisci il tuo nome utente per iniziare:</p>
+                    <div class="form-group">
+                        <label class="form-label" for="username-input">Nome Utente</label>
+                        <input type="text" id="username-input" class="form-control" placeholder="Inserisci il tuo nome utente" required>
+                    </div>
+                    <div class="modal-actions">
+                        <button onclick="checkUser()" class="btn btn--primary">Continua</button>
+                    </div>
+                </div>
+                
+                <div id="setup-step-2" class="setup-step hidden">
+                    <p>Configura i tuoi dati medici:</p>
+                    <div class="form-group">
+                        <label class="form-label" for="doctor-name">Nome Completo</label>
+                        <input type="text" id="doctor-name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="doctor-address">Indirizzo</label>
+                        <textarea id="doctor-address" class="form-control" rows="2" required></textarea>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="doctor-piva">P.IVA</label>
+                            <input type="text" id="doctor-piva" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="doctor-cf">Codice Fiscale</label>
+                            <input type="text" id="doctor-cf" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label" for="doctor-title">Titolo Professionale</label>
+                            <input type="text" id="doctor-title" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label" for="doctor-order">Ordine Medico</label>
+                            <input type="text" id="doctor-order" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button onclick="goBackToStep1()" class="btn btn--secondary">Indietro</button>
+                        <button onclick="completeSetup()" class="btn btn--primary">Completa Configurazione</button>
+                    </div>
+                </div>
+                
+                <div id="setup-step-3" class="setup-step hidden">
+                    <h4>Configurazione Completata!</h4>
+                    <p>Il tuo codice di sincronizzazione:</p>
+                    <div class="sync-code-display">
+                        <code id="user-sync-code"></code>
+                        <button onclick="copySyncCode()" class="btn btn--sm btn--outline">Copia</button>
+                    </div>
+                    <div id="qr-code-container" style="text-align: center; margin: var(--space-16) 0;">
+                        <canvas id="qr-code"></canvas>
+                    </div>
+                    <p class="text-sm">Salva questo codice per accedere ai tuoi dati da altri dispositivi.</p>
+                    <div class="modal-actions">
+                        <button onclick="finishSetup()" class="btn btn--primary">Inizia</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="navigation">
+        <div class="nav-left">
+            <button id="nav-generator" class="nav-btn nav-btn--active" onclick="showPage('generator')">Generatore Fatture</button>
+            <button id="nav-management" class="nav-btn" onclick="showPage('management')">Gestione Dati</button>
+        </div>
+        <div class="nav-right">
+            <span class="user-info">
+                <span id="current-user-name">Utente</span> - 
+                <span id="current-doctor-name">Dr.</span>
+            </span>
+            <div class="dropdown">
+                <button class="nav-btn nav-btn--dropdown" onclick="toggleUserMenu()">⚙️ Impostazioni</button>
+                <div id="user-menu" class="dropdown-menu hidden">
+                    <button onclick="editDoctorInfo()" class="dropdown-item">Modifica Dati Medico</button>
+                    <button onclick="showSyncOptions()" class="dropdown-item">Sincronizzazione</button>
+                    <button onclick="switchUser()" class="dropdown-item">Cambia Utente</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page 1: Invoice Generator -->
+    <div id="page-generator" class="page-container">
+        <div class="app-container">
+            <!-- Left Panel - Form -->
+            <div class="form-panel">
+                <div class="form-header">
+                    <h2>Generatore Fatture Mediche</h2>
+                    <p id="form-doctor-name">Dr. Daniele Miccichè</p>
+                </div>
+
+                <form id="invoice-form" class="invoice-form">
+                    <!-- Patient Information Section -->
+                    <section class="form-section">
+                        <h3>Informazioni Paziente</h3>
+                        
+                        <div class="patient-quick-select">
+                            <label class="form-label" for="patient-select">Paziente Salvato</label>
+                            <select id="patient-select" class="form-control">
+                                <option value="">Seleziona paziente salvato...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="patient-title">Titolo</label>
+                            <select id="patient-title" class="form-control" required>
+                                <option value="">Seleziona...</option>
+                                <option value="Signore">Signore</option>
+                                <option value="Signora">Signora</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="patient-name">Cognome e Nome</label>
+                            <input type="text" id="patient-name" class="form-control" placeholder="Inserisci cognome e nome" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="patient-address">Indirizzo</label>
+                            <textarea id="patient-address" class="form-control" rows="3" placeholder="Inserisci indirizzo completo" required></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="patient-cf">Codice Fiscale</label>
+                            <input type="text" id="patient-cf" class="form-control" placeholder="Inserisci codice fiscale" required>
+                        </div>
+
+                        <button type="button" onclick="saveCurrentPatient()" class="btn btn--secondary btn--sm">
+                            Salva Paziente
+                        </button>
+                    </section>
+
+                    <!-- Invoice Details Section -->
+                    <section class="form-section">
+                        <h3>Dettagli Fattura</h3>
+                        
+                        <div class="form-group">
+                            <label class="form-label">Numero Fattura</label>
+                            <input type="text" id="invoice-number" class="form-control" readonly>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="invoice-date">Data di Emissione</label>
+                            <input type="date" id="invoice-date" class="form-control" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="traced-payment" class="checkbox">
+                                Pagamento tracciato
+                            </label>
+                        </div>
+                    </section>
+
+                    <!-- Services Section -->
+                    <section class="form-section">
+                        <h3>Descrizione delle Prestazioni</h3>
+                        
+                        <div id="services-container">
+                            <div class="service-entry" data-index="0">
+                                <div class="service-header">
+                                    <h4>Prestazione 1</h4>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label class="form-label">Tipologia Prestazione</label>
+                                    <input type="text" class="form-control service-type" placeholder="Descrizione della prestazione" required>
+                                </div>
+                                
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label class="form-label">Quantità</label>
+                                        <input type="number" class="form-control service-quantity" min="1" step="1" value="1" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label class="form-label">Importo (EUR)</label>
+                                        <input type="number" class="form-control service-amount" min="0" step="0.01" placeholder="0.00" required>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" onclick="addServiceEntry()" class="btn btn--secondary btn--sm">
+                            + Aggiungi Prestazione
+                        </button>
+
+                        <div class="total-section">
+                            <h4>Totale Imponibile: <span id="total-amount">0,00 EUR</span></h4>
+                        </div>
+                    </section>
+
+                    <!-- Action Buttons -->
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn--primary">Salva Fattura</button>
+                        <button type="button" onclick="generatePDF()" class="btn btn--secondary">Genera PDF</button>
+                        <button type="button" onclick="printInvoice()" class="btn btn--outline">Stampa PDF</button>
+                        <button type="button" onclick="resetForm()" class="btn btn--secondary">Reset Form</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Right Panel - Invoice Preview -->
+            <div class="preview-panel">
+                <div class="invoice-preview" id="invoice-preview">
+                    <div class="invoice-header">
+                        <h1>FATTURA PER PRESTAZIONE SANITARIA</h1>
+                    </div>
+
+                    <div class="doctor-info" id="preview-doctor-info">
+                        <p><strong id="preview-doctor-name">Dr. Daniele Miccichè</strong></p>
+                        <p id="preview-doctor-address">Corso Umbria, 10144, Torino</p>
+                        <p>P.IVA <span id="preview-doctor-piva">13155780011</span></p>
+                        <p>C.F. <span id="preview-doctor-cf">MCCDNL98E26L219W</span></p>
+                    </div>
+
+                    <div class="patient-info">
+                        <p id="preview-patient-title"></p>
+                        <p id="preview-patient-name"></p>
+                        <p id="preview-patient-address"></p>
+                        <p id="preview-patient-cf"></p>
+                    </div>
+
+                    <div class="invoice-details">
+                        <p>Fattura N. <span id="preview-invoice-number">_____</span></p>
+                        <p>Data di emissione <span id="preview-invoice-date">_____</span></p>
+                    </div>
+
+                    <div class="services-section">
+                        <h3>DESCRIZIONE DELLA PRESTAZIONE</h3>
+                        <div id="preview-services">
+                            <p class="placeholder-text">I servizi appariranno qui...</p>
+                        </div>
+                    </div>
+
+                    <div class="invoice-totals">
+                        <p class="total-line">Totale imponibile: <span id="preview-total">0,00 EUR</span></p>
+                        <br>
+                        <p class="payment-traced-section">Pagamento tracciato: <span id="preview-payment-traced">SI [_] NO [_]</span></p>
+                    </div>
+
+                    <div class="legal-text">
+                        <p>IVA: esente ai sensi dell'art. 10 comma 18 DPR 633/1972</p>
+                        <p>Marca da bollo € 2,00 applicata se importo > € 77,47</p>
+                        <p>Regime fiscale: Operazione effettuata ai sensi dell'articolo 1, commi 54-89, Legge 190/2014 (regime forfettario) - esente IVA</p>
+                    </div>
+
+                    <div class="signature-section" id="preview-signature">
+                        <p><strong id="preview-signature-name">Dott. Daniele Miccichè</strong></p>
+                        <p id="preview-signature-title">Medico-chirurgo</p>
+                        <p id="preview-signature-order">O.M. Torino 27505</p>
+                        <p>P.IVA <span id="preview-signature-piva">13155780011</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Page 2: Data Management -->
+    <div id="page-management" class="page-container hidden">
+        <div class="container">
+            <div class="management-header">
+                <h2>Gestione Dati</h2>
+                <div class="management-stats">
+                    <span class="stat-item">Fatture: <strong id="invoices-count">0</strong></span>
+                    <span class="stat-item">Pazienti: <strong id="patients-count">0</strong></span>
+                    <span class="stat-item">Codice Sync: <code id="header-sync-code">---</code></span>
+                </div>
+                <div class="management-actions">
+                    <button onclick="exportUserData()" class="btn btn--primary">Esporta Dati</button>
+                    <button onclick="document.getElementById('import-file').click()" class="btn btn--secondary">Importa Dati</button>
+                    <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importData(event)">
+                </div>
+            </div>
+
+            <div class="management-grid">
+                <!-- Saved Invoices -->
+                <div class="management-section">
+                    <h3>Fatture Salvate</h3>
+                    <div id="saved-invoices" class="data-list">
+                        <p class="no-data">Nessuna fattura salvata</p>
+                    </div>
+                </div>
+
+                <!-- Saved Patients -->
+                <div class="management-section">
+                    <h3>Pazienti Salvati</h3>
+                    <div id="saved-patients" class="data-list">
+                        <p class="no-data">Nessun paziente salvato</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Doctor Info Edit Modal -->
+    <div id="doctor-edit-modal" class="modal hidden">
+        <div class="modal-overlay">
+            <div class="modal-content modal-content--large">
+                <h3>Modifica Dati Medico</h3>
+                <div class="form-group">
+                    <label class="form-label" for="edit-doctor-name">Nome Completo</label>
+                    <input type="text" id="edit-doctor-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label" for="edit-doctor-address">Indirizzo</label>
+                    <textarea id="edit-doctor-address" class="form-control" rows="2" required></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="edit-doctor-piva">P.IVA</label>
+                        <input type="text" id="edit-doctor-piva" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-doctor-cf">Codice Fiscale</label>
+                        <input type="text" id="edit-doctor-cf" class="form-control" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label" for="edit-doctor-title">Titolo Professionale</label>
+                        <input type="text" id="edit-doctor-title" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="edit-doctor-order">Ordine Medico</label>
+                        <input type="text" id="edit-doctor-order" class="form-control" required>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button onclick="cancelDoctorEdit()" class="btn btn--secondary">Annulla</button>
+                    <button onclick="saveDoctorEdit()" class="btn btn--primary">Salva Modifiche</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sync Options Modal -->
+    <div id="sync-modal" class="modal hidden">
+        <div class="modal-overlay">
+            <div class="modal-content">
+                <h3>Opzioni Sincronizzazione</h3>
+                <p>Il tuo codice di sincronizzazione:</p>
+                <div class="sync-code-display">
+                    <code id="current-sync-code"></code>
+                    <button onclick="copyCurrentSyncCode()" class="btn btn--sm btn--outline">Copia</button>
+                </div>
+                <div id="sync-qr-container" style="text-align: center; margin: var(--space-16) 0;">
+                    <canvas id="sync-qr-code"></canvas>
+                </div>
+                <p class="text-sm">Utilizza questo codice per accedere ai tuoi dati da altri dispositivi.</p>
+                <div class="modal-actions">
+                    <button onclick="hideSyncModal()" class="btn btn--primary">Chiudi</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
