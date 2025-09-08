@@ -2,6 +2,7 @@
 let currentUser = null;
 let currentDoctorInfo = null;
 let invoiceCounter = 1;
+let invoiceYear = new Date().getFullYear();
 let serviceCounter = 1;
 let currentPage = 'generator';
 let patients = [];
@@ -10,7 +11,7 @@ let invoices = [];
 // Default doctor data
 const defaultDoctorInfo = {
     name: "Dr. Pinco Pallino ",
-    address: "Indirizzo, CAP , Città, Provincia",
+    address: "Indirizzo, CAP , CittÃ , Provincia",
     piva: "11 cifre",
     cf: "codice fiscale",
     professional_title: "Medico-chirurgo",
@@ -20,7 +21,7 @@ const defaultDoctorInfo = {
 // Legal text constants
 const legalText = {
     iva_exemption: "IVA: esente ai sensi dell'art. 10 comma 18 DPR 633/1972",
-    stamp_duty: "Marca da bollo € 2,00 applicata se importo > € 77,47",
+    stamp_duty: "Marca da bollo â‚¬ 2,00 applicata se importo > â‚¬ 77,47",
     fiscal_regime: "Regime fiscale: Operazione effettuata ai sensi dell'articolo 1, commi 54-89, Legge 190/2014 (regime forfettario) - esente IVA"
 };
 
@@ -41,6 +42,40 @@ const samplePatients = [
         tax_code: "BNCNNA75B02L219Y"
     }
 ];
+
+
+// Generate invoice number with year format (e.g., 0001-2025)
+function generateInvoiceNumber(number, year) {
+    return number.toString().padStart(4, '0') + '-' + year.toString();
+}
+
+// Check if we need to reset counter for new year
+function checkAndResetYearCounter() {
+    const currentYear = new Date().getFullYear();
+    if (currentYear !== invoiceYear) {
+        invoiceYear = currentYear;
+        invoiceCounter = 1;
+        saveUserData(); // Save the reset
+        return true; // Indica che Ã¨ stato fatto un reset
+    }
+    return false;
+}
+
+// Parse invoice number from format "0001-2025" to get the numeric part
+function parseInvoiceNumber(invoiceNumberString) {
+    if (!invoiceNumberString) return { number: 1, year: new Date().getFullYear() };
+
+    const parts = invoiceNumberString.split('-');
+    if (parts.length === 2) {
+        const number = parseInt(parts[0], 10) || 1;
+        const year = parseInt(parts[1], 10) || new Date().getFullYear();
+        return { number, year };
+    }
+
+    // Fallback per formati legacy
+    const number = parseInt(invoiceNumberString, 10) || 1;
+    return { number, year: new Date().getFullYear() };
+}
 
 // Initialize the application
 document.addEventListener('DOMContentLoaded', function() {
@@ -384,7 +419,7 @@ function initializeInvoiceForm() {
     // Set initial invoice number
     const invoiceNumberField = document.getElementById('invoice-number');
     if (invoiceNumberField) {
-        invoiceNumberField.value = invoiceCounter.toString().padStart(4, '0');
+        invoiceNumberField.value = generateInvoiceNumber(invoiceCounter, invoiceYear);
     }
     
     // Show generator page by default
@@ -443,6 +478,29 @@ function setupFormListeners() {
         }
     });
     
+    
+    // Invoice number manual edit listener
+    const invoiceNumberField = document.getElementById('invoice-number');
+    if (invoiceNumberField) {
+        invoiceNumberField.addEventListener('input', function() {
+            // Validate and update preview when invoice number is manually changed
+            updatePreview();
+        });
+
+        invoiceNumberField.addEventListener('blur', function() {
+            // When user finishes editing, validate the format
+            const value = this.value.trim();
+            if (value) {
+                const parsed = parseInvoiceNumber(value);
+                this.value = generateInvoiceNumber(parsed.number, parsed.year);
+
+                // Update internal counters
+                invoiceCounter = parsed.number;
+                invoiceYear = parsed.year;
+            }
+        });
+    }
+
     console.log('Form listeners setup complete');
 }
 
@@ -631,7 +689,7 @@ function saveCurrentPatient() {
     );
     
     if (existingPatient) {
-        showNotification('Paziente già presente', 'warning');
+        showNotification('Paziente giÃ  presente', 'warning');
         return;
     }
     
@@ -670,7 +728,7 @@ function handleFormSubmit(e) {
     invoiceCounter++;
     const invoiceNumberField = document.getElementById('invoice-number');
     if (invoiceNumberField) {
-        invoiceNumberField.value = invoiceCounter.toString().padStart(4, '0');
+        invoiceNumberField.value = generateInvoiceNumber(invoiceCounter, invoiceYear);
     }
     
     showNotification('Fattura salvata con successo!', 'success');
@@ -791,7 +849,7 @@ function addServiceEntry() {
         
         <div class="form-row">
             <div class="form-group">
-                <label class="form-label">Quantità</label>
+                <label class="form-label">QuantitÃ </label>
                 <input type="number" class="form-control service-quantity" min="1" step="1" value="1" required>
             </div>
             
@@ -929,7 +987,7 @@ function updateServicesPreview() {
                 <div class="service-item">
                     <h4>${index + 1}. Tipologia prestazione: ${type}</h4>
                     <div class="service-details">
-                        <p>* Quantità: ${quantity}</p>
+                        <p>* QuantitÃ : ${quantity}</p>
                         <p>* Importo: ${formattedAmount} EUR</p>
                     </div>
                 </div>
@@ -1044,7 +1102,7 @@ function generatePDF() {
             
             if (type && quantity && amount) {
                 pdf.text(`${index + 1}. Tipologia prestazione: ${type}`, 20, yPos);
-                pdf.text(`* Quantità: ${quantity}`, 25, yPos + 5);
+                pdf.text(`* QuantitÃ : ${quantity}`, 25, yPos + 5);
                 const formattedAmount = parseFloat(amount).toFixed(2).replace('.', ',');
                 pdf.text(`* Importo: ${formattedAmount} EUR`, 25, yPos + 10);
                 yPos += 20;
@@ -1067,7 +1125,7 @@ function generatePDF() {
         yPos += 15;
         pdf.setFontSize(8);
         pdf.text('IVA: esente ai sensi dell\'art. 10 comma 18 DPR 633/1972', 20, yPos);
-        pdf.text('Marca da bollo € 2,00 applicata se importo > € 77,47', 20, yPos + 5);
+        pdf.text('Marca da bollo â‚¬ 2,00 applicata se importo > â‚¬ 77,47', 20, yPos + 5);
         const fiscalText = 'Regime fiscale: Operazione effettuata ai sensi dell\'articolo 1, commi 54-89, Legge 190/2014 (regime forfettario) - esente IVA';
         const fiscalLines = pdf.splitTextToSize(fiscalText, 170);
         fiscalLines.forEach((line, index) => {
@@ -1122,7 +1180,7 @@ function resetForm() {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Quantità</label>
+                        <label class="form-label">QuantitÃ </label>
                         <input type="number" class="form-control service-quantity" min="1" step="1" value="1" required>
                     </div>
                     <div class="form-group">
@@ -1139,7 +1197,7 @@ function resetForm() {
     // Reset date and invoice number
     const today = new Date().toISOString().split('T')[0];
     document.getElementById('invoice-date').value = today;
-    document.getElementById('invoice-number').value = invoiceCounter.toString().padStart(4, '0');
+    document.getElementById('invoice-number').value = generateInvoiceNumber(invoiceCounter, invoiceYear);
     
     // Clear field borders
     document.querySelectorAll('.form-control').forEach(field => {
@@ -1263,7 +1321,7 @@ function viewInvoice(invoiceId) {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">Quantità</label>
+                        <label class="form-label">QuantitÃ </label>
                         <input type="number" class="form-control service-quantity" min="1" step="1" value="${service.quantity}" required>
                     </div>
                     <div class="form-group">
@@ -1336,7 +1394,7 @@ function exportUserData() {
         doctor: currentDoctorInfo,
         patients,
         invoices,
-        counters: { invoice: invoiceCounter, service: serviceCounter },
+        counters: { invoice: invoiceCounter, service: serviceCounter, year: invoiceYear },
         exportDate: new Date().toISOString()
     };
     
@@ -1370,7 +1428,7 @@ function importData(event) {
                     // Load as new user or merge with existing
                     const existingUser = getUserProfiles().includes(importData.username);
                     
-                    if (existingUser && !confirm('Utente già esistente. Sovrascrivere i dati?')) {
+                    if (existingUser && !confirm('Utente giÃ  esistente. Sovrascrivere i dati?')) {
                         return;
                     }
                     
@@ -1411,7 +1469,7 @@ function importData(event) {
                     if (newInvoices.length > 0) {
                         const maxInvoiceNumber = Math.max(...invoices.map(inv => parseInt(inv.number) || 0));
                         invoiceCounter = maxInvoiceNumber + 1;
-                        document.getElementById('invoice-number').value = invoiceCounter.toString().padStart(4, '0');
+                        document.getElementById('invoice-number').value = generateInvoiceNumber(invoiceCounter, invoiceYear);
                     }
                 }
                 
@@ -1419,7 +1477,7 @@ function importData(event) {
                 updatePatientSelect();
                 updateManagementView();
                 
-                showNotification('Dati importati con successo (formato compatibilità)', 'success');
+                showNotification('Dati importati con successo (formato compatibilitÃ )', 'success');
             }
             
         } catch (error) {
