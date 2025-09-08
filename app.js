@@ -11,7 +11,7 @@ let invoices = [];
 // Default doctor data
 const defaultDoctorInfo = {
     name: "Dr. Pinco Pallino ",
-    address: "Indirizzo, CAP , CittÃ , Provincia",
+    address: "Indirizzo, CAP , Città , Provincia",
     piva: "11 cifre",
     cf: "codice fiscale",
     professional_title: "Medico-chirurgo",
@@ -21,7 +21,7 @@ const defaultDoctorInfo = {
 // Legal text constants
 const legalText = {
     iva_exemption: "IVA: esente ai sensi dell'art. 10 comma 18 DPR 633/1972",
-    stamp_duty: "Marca da bollo â‚¬ 2,00 applicata se importo > â‚¬ 77,47",
+    stamp_duty: "Marca da bollo €2,00 applicata se importo > € 77,47",
     fiscal_regime: "Regime fiscale: Operazione effettuata ai sensi dell'articolo 1, commi 54-89, Legge 190/2014 (regime forfettario) - esente IVA"
 };
 
@@ -56,7 +56,7 @@ function checkAndResetYearCounter() {
         invoiceYear = currentYear;
         invoiceCounter = 1;
         saveUserData(); // Save the reset
-        return true; // Indica che Ã¨ stato fatto un reset
+        return true; // Indica che è¨ stato fatto un reset
     }
     return false;
 }
@@ -689,7 +689,7 @@ function saveCurrentPatient() {
     );
     
     if (existingPatient) {
-        showNotification('Paziente giÃ  presente', 'warning');
+        showNotification('Paziente già  presente', 'warning');
         return;
     }
     
@@ -849,7 +849,7 @@ function addServiceEntry() {
         
         <div class="form-row">
             <div class="form-group">
-                <label class="form-label">QuantitÃ </label>
+                <label class="form-label">Quantità </label>
                 <input type="number" class="form-control service-quantity" min="1" step="1" value="1" required>
             </div>
             
@@ -987,7 +987,7 @@ function updateServicesPreview() {
                 <div class="service-item">
                     <h4>${index + 1}. Tipologia prestazione: ${type}</h4>
                     <div class="service-details">
-                        <p>* QuantitÃ : ${quantity}</p>
+                        <p>* Quantità : ${quantity}</p>
                         <p>* Importo: ${formattedAmount} EUR</p>
                     </div>
                 </div>
@@ -1102,7 +1102,7 @@ function generatePDF() {
             
             if (type && quantity && amount) {
                 pdf.text(`${index + 1}. Tipologia prestazione: ${type}`, 20, yPos);
-                pdf.text(`* QuantitÃ : ${quantity}`, 25, yPos + 5);
+                pdf.text(`* Quantità : ${quantity}`, 25, yPos + 5);
                 const formattedAmount = parseFloat(amount).toFixed(2).replace('.', ',');
                 pdf.text(`* Importo: ${formattedAmount} EUR`, 25, yPos + 10);
                 yPos += 20;
@@ -1180,7 +1180,7 @@ function resetForm() {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">QuantitÃ </label>
+                        <label class="form-label">Quantità </label>
                         <input type="number" class="form-control service-quantity" min="1" step="1" value="1" required>
                     </div>
                     <div class="form-group">
@@ -1321,7 +1321,7 @@ function viewInvoice(invoiceId) {
                 </div>
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">QuantitÃ </label>
+                        <label class="form-label">Quantità </label>
                         <input type="number" class="form-control service-quantity" min="1" step="1" value="${service.quantity}" required>
                     </div>
                     <div class="form-group">
@@ -1428,7 +1428,7 @@ function importData(event) {
                     // Load as new user or merge with existing
                     const existingUser = getUserProfiles().includes(importData.username);
                     
-                    if (existingUser && !confirm('Utente giÃ  esistente. Sovrascrivere i dati?')) {
+                    if (existingUser && !confirm('Utente già  esistente. Sovrascrivere i dati?')) {
                         return;
                     }
                     
@@ -1477,7 +1477,7 @@ function importData(event) {
                 updatePatientSelect();
                 updateManagementView();
                 
-                showNotification('Dati importati con successo (formato compatibilitÃ )', 'success');
+                showNotification('Dati importati con successo (formato compatibilità )', 'success');
             }
             
         } catch (error) {
