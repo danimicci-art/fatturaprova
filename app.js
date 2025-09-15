@@ -1015,8 +1015,6 @@ function printInvoice() {
         return;
     }
     
-    showNotification('Preparazione stampa...', 'info');
-    
     setTimeout(() => {
         try {
             window.print();
