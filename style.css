@@ -1570,7 +1570,30 @@ select.form-control {
   .signature-section p {
     color: black !important;
   }
-  
+    /* Nasconde elementi che potrebbero causare```sti indesiderati */
+    .print-status, ```  [class*="status"], 
+    [id*="status"],```  [class*="prepare"],
+    [id*="prepare"],```  .overlay,
+    .loading,
+    .notification,```  .modal,
+    .popup {
+        display: none !important```       visibility: hidden !important;
+    }
+    
+    ```Nasconde navigazione e controlli durante la stampa */
+    ```, .navigation, .controls, button, input[type="button"]```        display: none !important;
+    }
+    
+    ```Assicura che solo il contenuto della fattura sia visibile```
+    .invoice-preview {
+        visibility: visible !important;```      display: block !important;
+    }
+    
+    /*```muove margini non necessari */
+    body {```      margin: 0 !important;
+        padding: 20px```mportant;
+    }
+}
   @page {
     size: A4;
     margin: 15mm;
@@ -1588,3 +1611,4 @@ select.form-control {
     page-break-inside: avoid;
   }
 }
+
